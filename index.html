@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quản Lý Doanh Thu Xe</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; }
+
+  .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .login-box { background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 320px; }
+  .login-box h2 { text-align: center; margin-bottom: 24px; color: #1a73e8; }
+  .login-box input, .login-box select { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; margin-bottom: 14px; }
+  .login-box button { width: 100%; padding: 12px; background: #1a73e8; color: #fff; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+  .login-box button:hover { background: #1558b0; }
+  .login-err { color: red; font-size: 13px; text-align: center; margin-top: 8px; }
+
+  .app { display: none; }
+  .topbar { background: #1a73e8; color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+  .topbar h1 { font-size: 18px; }
+  .topbar .user-info { display: flex; align-items: center; gap: 14px; font-size: 14px; }
+  .topbar button { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+
+  .main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+
+  .schedule-badge { background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); display: flex; align-items: center; gap: 16px; }
+  .schedule-badge .driver-today { font-size: 22px; font-weight: 700; }
+  .schedule-badge .driver-today.tri { color: #1a73e8; }
+  .schedule-badge .driver-today.phuoc { color: #34a853; }
+  .schedule-badge small { color: #888; font-size: 13px; }
+
+  .card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .card h3 { font-size: 16px; color: #555; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+
+  .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 140px; }
+  .form-group label { font-size: 13px; color: #666; }
+  .form-group input, .form-group select { padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+  .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .btn-primary { background: #1a73e8; color: #fff; }
+  .btn-primary:hover { background: #1558b0; }
+  .btn-danger { background: #ea4335; color: #fff; font-size: 12px; padding: 5px 10px; }
+  .btn-danger:hover { background: #c5221f; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f8f9fa; padding: 10px 12px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #eee; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+  tr:hover td { background: #fafafa; }
+  .tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .tag-grab { background: #fff3e0; color: #e65100; }
+  .tag-gsm { background: #e8f5e9; color: #2e7d32; }
+  .tag-tri { background: #e3f2fd; color: #1565c0; }
+  .tag-phuoc { background: #f3e5f5; color: #6a1b9a; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .stat-box { background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .stat-box .label { font-size: 13px; color: #888; margin-bottom: 6px; }
+  .stat-box .value { font-size: 22px; font-weight: 700; color: #1a73e8; }
+  .stat-box .sub { font-size: 12px; color: #aaa; margin-top: 4px; }
+
+  .filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-row select, .filter-row input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; }
+
+  .empty { text-align: center; color: #aaa; padding: 30px; }
+  .alert { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 10px 16px; font-size: 13px; color: #856404; margin-bottom: 14px; }
+
+  @media (max-width: 600px) {
+    .form-row { flex-direction: column; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <h2>🚗 Quản Lý Xe</h2>
+    <select id="loginUser">
+      <option value="">-- Chọn tài khoản --</option>
+      <option value="tri">Tài xế Trí</option>
+      <option value="phuoc">Tài xế Phước</option>
+      <option value="chuxe">Chủ Xe</option>
+      <option value="admin">Quản lý (Admin)</option>
+    </select>
+    <input type="password" id="loginPass" placeholder="Mật khẩu" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Đăng nhập</button>
+    <div class="login-err" id="loginErr"></div>
+    <div id="loginLoading" style="display:none;text-align:center;color:#888;margin-top:10px;font-size:13px">⏳ Đang kết nối...</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <div class="topbar">
+    <h1>🚗 Quản Lý Doanh Thu Xe</h1>
+    <div class="user-info">
+      <span id="topbarUser"></span>
+      <button onclick="doLogout()">Đăng xuất</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Lịch hôm nay -->
+    <div class="schedule-badge">
+      <div>
+        <small>Hôm nay (<span id="todayStr"></span>)</small><br>
+        <span class="driver-today" id="driverToday"></span>
+      </div>
+      <div style="margin-left:auto; text-align:right">
+        <small>Ngày mai</small><br>
+        <span id="driverTomorrow" style="font-size:15px; color:#888;"></span>
+      </div>
+    </div>
+
+    <!-- Nhập doanh thu -->
+    <div class="card" id="inputCard">
+      <h3>➕ Nhập Doanh Thu</h3>
+      <div class="alert" id="inputAlert" style="display:none"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ngày</label>
+          <input type="date" id="inDate">
+        </div>
+        <div class="form-group" id="driverGroup">
+          <label>Tài xế</label>
+          <select id="inDriver">
+            <option value="tri">Trí</option>
+            <option value="phuoc">Phước</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>App</label>
+          <select id="inApp">
+            <option value="grab">Grab (HH 35%)</option>
+            <option value="gsm">GreenSM (HH 25%)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Doanh thu (đ)</label>
+          <input type="number" id="inRevenue" placeholder="0" min="0">
+        </div>
+        <div class="form-group" style="min-width:80px">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="addRecord()">Lưu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Đổi mật khẩu -->
+    <div class="card" id="changePassCard">
+      <h3>🔑 Đổi Mật Khẩu</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Mật khẩu hiện tại</label>
+          <input type="password" id="oldPass" placeholder="Nhập mật khẩu hiện tại">
+        </div>
+        <div class="form-group">
+          <label>Mật khẩu mới</label>
+          <input type="password" id="newPass" placeholder="Mật khẩu mới">
+        </div>
+        <div class="form-group">
+          <label>Xác nhận mật khẩu mới</label>
+          <input type="password" id="confirmPass" placeholder="Nhập lại mật khẩu mới">
+        </div>
+        <div class="form-group" style="min-width:80px">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="doChangePass()">Đổi pass</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thống kê -->
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <!-- Quản lý lịch (admin only) -->
+    <div class="card" id="scheduleCard" style="display:none">
+      <h3>📅 Quản Lý Lịch Chạy</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ngày</label>
+          <input type="date" id="schDate">
+        </div>
+        <div class="form-group">
+          <label>Tài xế chạy ngày này</label>
+          <select id="schDriver">
+            <option value="tri">Trí</option>
+            <option value="phuoc">Phước</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:80px">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="saveSchedule()">Gán lịch</button>
+        </div>
+      </div>
+      <div id="scheduleList" style="margin-top:12px"></div>
+    </div>
+
+    <!-- Quản lý App & Hoa hồng (admin only) -->
+    <div class="card" id="appCard" style="display:none">
+      <h3>⚙️ Quản Lý App & Tỷ Lệ Hoa Hồng</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tên app</label>
+          <input type="text" id="appName" placeholder="Tên app (vd: Be)">
+        </div>
+        <div class="form-group" style="max-width:160px">
+          <label>Hoa hồng (%)</label>
+          <input type="number" id="appComm" placeholder="20" min="0" max="100">
+        </div>
+        <div class="form-group" style="min-width:80px">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="addApp()">Thêm / Cập nhật</button>
+        </div>
+      </div>
+      <div id="appList" style="margin-top:12px"></div>
+    </div>
+
+    <!-- Bảng dữ liệu -->
+    <div class="card">
+      <h3>📋 Chi Tiết Doanh Thu</h3>
+      <div class="filter-row">
+        <select id="fDriver" onchange="renderTable()">
+          <option value="">Tất cả tài xế</option>
+          <option value="tri">Trí</option>
+          <option value="phuoc">Phước</option>
+        </select>
+        <select id="fApp" onchange="renderTable()">
+          <option value="">Tất cả app</option>
+          <option value="grab">Grab</option>
+          <option value="gsm">GreenSM</option>
+        </select>
+        <input type="month" id="fMonth" onchange="renderTable()">
+        <button class="btn btn-primary" onclick="exportCSV()" style="padding:8px 16px;font-size:13px">📥 Xuất Excel (CSV)</button>
+      </div>
+      <div id="tableWrap"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAAI3Wnzn3eM2rOpH_TgfQ5xM4WiCkWQ8",
+  authDomain: "taxi-baocao.firebaseapp.com",
+  databaseURL: "https://taxi-baocao-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "taxi-baocao",
+  storageBucket: "taxi-baocao.firebasestorage.app",
+  messagingSenderId: "980333707920",
+  appId: "1:980333707920:web:d1a18ff70028d226c14e15"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ============ CONFIG ============
+const USERS = {
+  tri:    { pass: '1234',    role: 'driver', name: 'Tài xế Trí',      driver: 'tri' },
+  phuoc:  { pass: '1234',    role: 'driver', name: 'Tài xế Phước',    driver: 'phuoc' },
+  chuxe:  { pass: '1234',    role: 'owner',  name: 'Chủ Xe' },
+  admin:  { pass: 'admin88', role: 'admin',  name: 'Quản lý (Admin)' }
+};
+
+function getPassStore() {
+  return JSON.parse(localStorage.getItem('taxi_pass') || '{}');
+}
+function checkPass(userId, pass) {
+  const store = getPassStore();
+  const base = USERS[userId].pass;
+  return (store[userId] || base) === pass;
+}
+function changePass(userId, newPass) {
+  const store = getPassStore();
+  store[userId] = newPass;
+  localStorage.setItem('taxi_pass', JSON.stringify(store));
+}
+
+// Default apps - lưu trong localStorage, admin có thể sửa
+const DEFAULT_APPS = [
+  { id: 'grab', name: 'Grab',    commission: 35 },
+  { id: 'gsm',  name: 'GreenSM', commission: 25 },
+  { id: 'be',   name: 'Be',      commission: 20 }
+];
+
+function getApps() {
+  return JSON.parse(localStorage.getItem('taxi_apps') || JSON.stringify(DEFAULT_APPS));
+}
+function saveApps(arr) {
+  localStorage.setItem('taxi_apps', JSON.stringify(arr));
+  db.ref('apps').set(arr);
+}
+function getAppById(id) {
+  return getApps().find(a => a.id === id) || { name: id, commission: 0 };
+}
+
+// ============ CHANGE PASSWORD ============
+function doChangePass() {
+  const old = document.getElementById('oldPass').value;
+  const nw  = document.getElementById('newPass').value;
+  const cf  = document.getElementById('confirmPass').value;
+  if (!checkPass(currentUser.id, old)) { alert('Mật khẩu hiện tại không đúng'); return; }
+  if (!nw) { alert('Mật khẩu mới không được để trống'); return; }
+  if (nw !== cf) { alert('Mật khẩu mới không khớp'); return; }
+  changePass(currentUser.id, nw);
+  document.getElementById('oldPass').value = '';
+  document.getElementById('newPass').value = '';
+  document.getElementById('confirmPass').value = '';
+  alert('✅ Đổi mật khẩu thành công!');
+}
+
+// ============ APP MANAGEMENT (admin) ============
+function addApp() {
+  const name = document.getElementById('appName').value.trim();
+  const comm = parseFloat(document.getElementById('appComm').value);
+  if (!name) { alert('Vui lòng nhập tên app'); return; }
+  if (isNaN(comm) || comm < 0 || comm > 100) { alert('Hoa hồng phải từ 0-100%'); return; }
+  const apps = getApps();
+  const id = name.toLowerCase().replace(/\s+/g, '_');
+  const existing = apps.findIndex(a => a.id === id);
+  if (existing >= 0) {
+    apps[existing].commission = comm;
+    apps[existing].name = name;
+  } else {
+    apps.push({ id, name, commission: comm });
+  }
+  saveApps(apps);
+  document.getElementById('appName').value = '';
+  document.getElementById('appComm').value = '';
+  renderAppList();
+  refreshAppSelect();
+  renderTable();
+}
+
+function deleteApp(id) {
+  if (!confirm('Xóa app này?')) return;
+  saveApps(getApps().filter(a => a.id !== id));
+  renderAppList();
+  refreshAppSelect();
+}
+
+function renderAppList() {
+  const apps = getApps();
+  let html = '<table><thead><tr><th>App</th><th>Hoa hồng</th><th>Chủ xe nhận</th><th>Tài xế nhận</th><th></th></tr></thead><tbody>';
+  for (const a of apps) {
+    const net = 100 - a.commission;
+    html += `<tr>
+      <td><b>${a.name}</b></td>
+      <td style="color:#ea4335">${a.commission}%</td>
+      <td style="color:#9c27b0">${(net * 0.4).toFixed(1)}%</td>
+      <td style="color:#ff6f00">${(net * 0.6).toFixed(1)}%</td>
+      <td>
+        <button class="btn btn-danger" onclick="deleteApp('${a.id}')">Xóa</button>
+      </td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('appList').innerHTML = html;
+}
+
+function refreshAppSelect() {
+  const apps = getApps();
+  // Cập nhật dropdown nhập liệu
+  const sel = document.getElementById('inApp');
+  const cur = sel.value;
+  sel.innerHTML = apps.map(a => `<option value="${a.id}">${a.name} (HH ${a.commission}%)</option>`).join('');
+  if (apps.find(a => a.id === cur)) sel.value = cur;
+
+  // Cập nhật filter
+  const fApp = document.getElementById('fApp');
+  const curF = fApp.value;
+  fApp.innerHTML = '<option value="">Tất cả app</option>' + apps.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  if (apps.find(a => a.id === curF)) fApp.value = curF;
+}
+function saveScheduleData(obj) {
+  localStorage.setItem('taxi_schedule', JSON.stringify(obj));
+  db.ref('schedule').set(obj);
+}
+function getSchedule() {
+  return JSON.parse(localStorage.getItem('taxi_schedule') || '{}');
+}
+
+function getDriverByDate(dateStr) {
+  // Kiểm tra override trước
+  const sch = getSchedule();
+  if (sch[dateStr]) return sch[dateStr];
+  // Mặc định luân phiên theo ngày trong năm
+  const d = new Date(dateStr);
+  const dayOfYear = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  return dayOfYear % 2 === 0 ? 'tri' : 'phuoc';
+}
+
+function saveSchedule() {
+  const date = document.getElementById('schDate').value;
+  const driver = document.getElementById('schDriver').value;
+  if (!date) { alert('Vui lòng chọn ngày'); return; }
+  const sch = getSchedule();
+  sch[date] = driver;
+  saveScheduleData(sch);
+  renderScheduleList();
+  initScheduleBadge(); // cập nhật badge hôm nay
+  alert(`✅ Đã gán ${driver === 'tri' ? 'Trí' : 'Phước'} chạy ngày ${formatDate(date)}`);
+}
+
+function deleteSchedule(date) {
+  const sch = getSchedule();
+  delete sch[date];
+  saveScheduleData(sch);
+  renderScheduleList();
+  initScheduleBadge();
+}
+
+function renderScheduleList() {
+  const sch = getSchedule();
+  const keys = Object.keys(sch).sort().reverse().slice(0, 14); // show 14 ngày gần nhất
+  if (keys.length === 0) {
+    document.getElementById('scheduleList').innerHTML = '<div class="empty" style="padding:12px">Chưa có lịch gán tay. Đang dùng lịch tự động.</div>';
+    return;
+  }
+  let html = '<table><thead><tr><th>Ngày</th><th>Tài xế</th><th>Loại</th><th></th></tr></thead><tbody>';
+  const today = new Date().toISOString().split('T')[0];
+  for (const d of keys) {
+    const isToday = d === today;
+    html += `<tr>
+      <td>${formatDate(d)} ${isToday ? '<b style="color:#1a73e8">(Hôm nay)</b>' : ''}</td>
+      <td><span class="tag tag-${sch[d]}">${sch[d] === 'tri' ? 'Trí' : 'Phước'}</span></td>
+      <td><span style="font-size:12px;color:#e65100">⚙️ Gán tay</span></td>
+      <td><button class="btn btn-danger" onclick="deleteSchedule('${d}')">Xóa</button></td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('scheduleList').innerHTML = html;
+}
+
+function initScheduleBadge() {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  const dToday = getDriverByDate(todayStr);
+  const dTomorrow = getDriverByDate(tomorrowStr);
+  const sch = getSchedule();
+
+  const el = document.getElementById('driverToday');
+  el.textContent = '🚗 ' + (dToday === 'tri' ? 'Trí' : 'Phước') + ' chạy hôm nay' + (sch[todayStr] ? ' ⚙️' : '');
+  el.className = 'driver-today ' + dToday;
+  document.getElementById('driverTomorrow').textContent = (dTomorrow === 'tri' ? 'Trí' : 'Phước') + (sch[tomorrowStr] ? ' ⚙️' : '');
+}
+
+// ============ AUTH ============
+let currentUser = null;
+
+function doLogin() {
+  const u = document.getElementById('loginUser').value;
+  const p = document.getElementById('loginPass').value;
+  if (!u) { document.getElementById('loginErr').textContent = 'Vui lòng chọn tài khoản'; return; }
+  if (!USERS[u] || !checkPass(u, p)) {
+    document.getElementById('loginErr').textContent = 'Sai mật khẩu';
+    return;
+  }
+  currentUser = { id: u, ...USERS[u] };
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('topbarUser').textContent = currentUser.name;
+  document.getElementById('loginLoading').style.display = 'block';
+  document.getElementById('loginLoading').textContent = '⏳ Đang kết nối Firebase...';
+  // Sync data từ Firebase trước khi init, timeout 5s
+  const timeout = new Promise(resolve => setTimeout(resolve, 5000));
+  Promise.race([
+    Promise.all([
+      db.ref('schedule').once('value').then(s => { if(s.val()) localStorage.setItem('taxi_schedule', JSON.stringify(s.val())); }),
+      db.ref('apps').once('value').then(s => { if(s.val()) localStorage.setItem('taxi_apps', JSON.stringify(s.val())); }),
+      db.ref('records').once('value').then(s => { if(s.val()) localStorage.setItem('taxi_records', JSON.stringify(s.val())); })
+    ]),
+    timeout
+  ]).then(() => initApp()).catch(() => initApp());
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('loginWrap').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginErr').textContent = '';
+}
+
+// ============ DATA (Firebase) ============
+function getData() {
+  return JSON.parse(localStorage.getItem('taxi_records') || '[]');
+}
+function saveData(arr) {
+  localStorage.setItem('taxi_records', JSON.stringify(arr));
+  db.ref('records').set(arr);
+}
+function syncFromFirebase(callback) {
+  db.ref('records').once('value').then(snap => {
+    const data = snap.val() || [];
+    localStorage.setItem('taxi_records', JSON.stringify(data));
+    if (callback) callback();
+  });
+}
+function listenFirebase() {
+  db.ref('records').on('value', snap => {
+    const data = snap.val() || [];
+    localStorage.setItem('taxi_records', JSON.stringify(data));
+    renderStats();
+    renderTable();
+  });
+}
+
+// ============ INIT ============
+function initApp() {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+  document.getElementById('todayStr').textContent = formatDate(todayStr);
+  document.getElementById('inDate').value = todayStr;
+  document.getElementById('fMonth').value = todayStr.substring(0, 7);
+  document.getElementById('schDate').value = todayStr;
+
+  initScheduleBadge();
+  const dToday = getDriverByDate(todayStr);
+
+  // QUAN TRONG: Reset tat ca section truoc
+  document.getElementById('scheduleCard').style.display = 'none';
+  document.getElementById('appCard').style.display = 'none';
+  document.getElementById('inputCard').style.display = 'block';
+  document.getElementById('inputAlert').style.display = 'none';
+  document.getElementById('driverGroup').style.display = 'block';
+
+  // Chỉ admin thấy section quản lý lịch và app
+  if (currentUser.role === 'admin') {
+    document.getElementById('scheduleCard').style.display = 'block';
+    document.getElementById('appCard').style.display = 'block';
+    renderScheduleList();
+    renderAppList();
+  }
+  refreshAppSelect();
+
+  // Tài xế: ẩn chọn tài xế, kiểm tra lịch
+  if (currentUser.role === 'driver') {
+    document.getElementById('driverGroup').style.display = 'none';
+    document.getElementById('inDriver').value = currentUser.driver;
+    if (currentUser.driver !== dToday) {
+      document.getElementById('inputAlert').style.display = 'block';
+      document.getElementById('inputAlert').textContent =
+        '⚠️ Hôm nay không phải lịch của bạn. Bạn chỉ có thể xem dữ liệu.';
+    }
+  }
+
+  // Chủ xe: ẩn form nhập liệu
+  if (currentUser.role === 'owner') {
+    document.getElementById('inputCard').style.display = 'none';
+  }
+
+  renderStats();
+  renderTable();
+  listenFirebase();
+}
+
+// ============ ADD ============
+function addRecord() {
+  const date = document.getElementById('inDate').value;
+  const app  = document.getElementById('inApp').value;
+  const rev  = parseFloat(document.getElementById('inRevenue').value) || 0;
+  let driver = document.getElementById('inDriver').value;
+
+  if (currentUser.role === 'driver') driver = currentUser.driver;
+
+  if (!date) { alert('Vui lòng chọn ngày'); return; }
+  if (rev <= 0) { alert('Vui lòng nhập doanh thu > 0'); return; }
+
+  // Kiểm tra lịch
+  if (currentUser.role === 'driver') {
+    const assigned = getDriverByDate(date);
+    if (assigned !== currentUser.driver) {
+      if (!confirm('Ngày này không phải lịch của bạn. Vẫn tiếp tục nhập?')) return;
+    }
+  }
+
+  const appCfg = getAppById(app);
+  const commission = rev * (appCfg.commission / 100);
+  const net = rev - commission;
+  const ownerShare = net * 0.4;
+  const driverShare = net * 0.6;
+
+  const records = getData();
+  records.push({ id: Date.now(), date, driver, app, revenue: rev, commission, net, ownerShare, driverShare });
+  saveData(records);
+
+  document.getElementById('inRevenue').value = '';
+  renderStats();
+  renderTable();
+}
+
+// ============ DELETE (admin only) ============
+function deleteRecord(id) {
+  if (currentUser.role !== 'admin') { alert('Không có quyền xóa'); return; }
+  if (!confirm('Xóa bản ghi này?')) return;
+  const records = getData().filter(r => r.id !== id);
+  saveData(records);
+  renderStats();
+  renderTable();
+}
+
+// ============ STATS ============
+function renderStats() {
+  const records = getData();
+  const month = document.getElementById('fMonth')?.value || new Date().toISOString().substring(0, 7);
+  const monthly = records.filter(r => r.date.startsWith(month));
+
+  const totalRev = monthly.reduce((s, r) => s + r.revenue, 0);
+  const totalComm = monthly.reduce((s, r) => s + r.commission, 0);
+  const totalNet = monthly.reduce((s, r) => s + r.net, 0);
+  const totalOwner = monthly.reduce((s, r) => s + (r.ownerShare || r.net * 0.4), 0);
+  const totalDriver = monthly.reduce((s, r) => s + (r.driverShare || r.net * 0.6), 0);
+
+  const triRev = monthly.filter(r => r.driver === 'tri').reduce((s, r) => s + r.revenue, 0);
+  const phuocRev = monthly.filter(r => r.driver === 'phuoc').reduce((s, r) => s + r.revenue, 0);
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-box">
+      <div class="label">Tổng doanh thu (tháng ${month.split('-')[1]}/${month.split('-')[0]})</div>
+      <div class="value">${fmt(totalRev)}đ</div>
+      <div class="sub">${monthly.length} chuyến</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Hoa hồng phải trả</div>
+      <div class="value" style="color:#ea4335">${fmt(totalComm)}đ</div>
+      <div class="sub">${getApps().map(a => `${a.name} ${a.commission}%`).join(' / ')}</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Thực nhận</div>
+      <div class="value" style="color:#34a853">${fmt(totalNet)}đ</div>
+      <div class="sub">Sau khi trừ hoa hồng</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Chủ xe (40%)</div>
+      <div class="value" style="color:#9c27b0">${fmt(totalOwner)}đ</div>
+      <div class="sub">= Thực nhận × 40%</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Trí nhận (60%)</div>
+      <div class="value" style="color:#1565c0">${fmt(monthly.filter(r=>r.driver==='tri').reduce((s,r)=>s+(r.driverShare||r.net*0.6),0))}đ</div>
+      <div class="sub">Doanh thu Trí: ${fmt(triRev)}đ</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Phước nhận (60%)</div>
+      <div class="value" style="color:#6a1b9a">${fmt(monthly.filter(r=>r.driver==='phuoc').reduce((s,r)=>s+(r.driverShare||r.net*0.6),0))}đ</div>
+      <div class="sub">Doanh thu Phước: ${fmt(phuocRev)}đ</div>
+    </div>
+  `;
+}
+
+// ============ TABLE ============
+function renderTable() {
+  renderStats();
+  const fDriver = document.getElementById('fDriver').value;
+  const fApp    = document.getElementById('fApp').value;
+  const fMonth  = document.getElementById('fMonth').value;
+
+  let records = getData();
+  if (fDriver) records = records.filter(r => r.driver === fDriver);
+  if (fApp)    records = records.filter(r => r.app === fApp);
+  if (fMonth)  records = records.filter(r => r.date.startsWith(fMonth));
+
+  // Driver chỉ thấy của mình, owner và admin thấy tất cả
+  if (currentUser.role === 'driver') {
+    records = records.filter(r => r.driver === currentUser.driver);
+  }
+
+  records.sort((a, b) => b.date.localeCompare(a.date));
+
+  if (records.length === 0) {
+    document.getElementById('tableWrap').innerHTML = '<div class="empty">Chưa có dữ liệu</div>';
+    return;
+  }
+
+  let html = `<table>
+    <thead><tr>
+      <th>Ngày</th>
+      <th>Tài xế</th>
+      <th>App</th>
+      <th>Doanh thu</th>
+      <th>Hoa hồng</th>
+      <th>Thực nhận</th>
+      <th style="color:#9c27b0">Chủ xe 40%</th>
+      <th style="color:#1565c0">Tài xế nhận 60%</th>
+      ${currentUser.role === 'admin' ? '<th></th>' : ''}
+    </tr></thead><tbody>`;
+
+  let sumRev = 0, sumComm = 0, sumNet = 0, sumOwner = 0, sumDriver = 0;
+  for (const r of records) {
+    const owner = r.ownerShare || r.net * 0.4;
+    const drv   = r.driverShare || r.net * 0.6;
+    sumRev += r.revenue; sumComm += r.commission; sumNet += r.net;
+    sumOwner += owner; sumDriver += drv;
+    html += `<tr>
+      <td>${formatDate(r.date)}</td>
+      <td><span class="tag tag-${r.driver}">${r.driver === 'tri' ? 'Trí' : 'Phước'}</span></td>
+      <td><span class="tag" style="background:#f5f5f5;color:#333">${getAppById(r.app).name}</span></td>
+      <td><b>${fmt(r.revenue)}đ</b></td>
+      <td style="color:#ea4335">${fmt(r.commission)}đ</td>
+      <td style="color:#34a853"><b>${fmt(r.net)}đ</b></td>
+      <td style="color:#9c27b0">${fmt(owner)}đ</td>
+      <td style="color:${r.driver==='tri'?'#1565c0':'#6a1b9a'}"><b>${fmt(drv)}đ</b> <span style="font-size:11px;color:#aaa">(${r.driver === 'tri' ? 'Trí' : 'Phước'})</span></td>
+      ${currentUser.role === 'admin' ? `<td><button class="btn btn-danger" onclick="deleteRecord(${r.id})">Xóa</button></td>` : ''}
+    </tr>`;
+  }
+
+  html += `</tbody><tfoot><tr style="background:#f8f9fa; font-weight:700">
+    <td colspan="3">Tổng cộng (${records.length} bản ghi)</td>
+    <td>${fmt(sumRev)}đ</td>
+    <td style="color:#ea4335">${fmt(sumComm)}đ</td>
+    <td style="color:#34a853">${fmt(sumNet)}đ</td>
+    <td style="color:#9c27b0">${fmt(sumOwner)}đ</td>
+    <td style="color:#1565c0">${fmt(sumDriver)}đ</td>
+    ${currentUser.role === 'admin' ? '<td></td>' : ''}
+  </tr></tfoot></table>`;
+
+  document.getElementById('tableWrap').innerHTML = html;
+}
+
+// ============ EXPORT CSV ============
+function exportCSV() {
+  const fDriver = document.getElementById('fDriver').value;
+  const fApp    = document.getElementById('fApp').value;
+  const fMonth  = document.getElementById('fMonth').value;
+
+  let records = getData();
+  if (fDriver) records = records.filter(r => r.driver === fDriver);
+  if (fApp)    records = records.filter(r => r.app === fApp);
+  if (fMonth)  records = records.filter(r => r.date.startsWith(fMonth));
+  if (currentUser.role === 'driver') records = records.filter(r => r.driver === currentUser.driver);
+  records.sort((a, b) => a.date.localeCompare(b.date));
+
+  const BOM = '\uFEFF'; // UTF-8 BOM để Excel đọc tiếng Việt đúng
+  let csv = BOM + 'Ngày,Tài xế,App,Doanh thu,Hoa hồng,Thực nhận,Chủ xe (40%),Tài xế nhận (60%)\n';
+  for (const r of records) {
+    const owner = r.ownerShare || r.net * 0.4;
+    const drv   = r.driverShare || r.net * 0.6;
+    csv += [
+      formatDate(r.date),
+      r.driver === 'tri' ? 'Trí' : 'Phước',
+      getAppById(r.app).name,
+      Math.round(r.revenue),
+      Math.round(r.commission),
+      Math.round(r.net),
+      Math.round(owner),
+      Math.round(drv)
+    ].join(',') + '\n';
+  }
+
+  // Thêm dòng tổng
+  const sumRev  = records.reduce((s,r) => s+r.revenue, 0);
+  const sumComm = records.reduce((s,r) => s+r.commission, 0);
+  const sumNet  = records.reduce((s,r) => s+r.net, 0);
+  const sumOwn  = records.reduce((s,r) => s+(r.ownerShare||r.net*0.4), 0);
+  const sumDrv  = records.reduce((s,r) => s+(r.driverShare||r.net*0.6), 0);
+  csv += `TỔNG CỘNG,,,${Math.round(sumRev)},${Math.round(sumComm)},${Math.round(sumNet)},${Math.round(sumOwn)},${Math.round(sumDrv)}\n`;
+
+  const filename = `doanh_thu${fMonth ? '_' + fMonth : ''}.csv`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============ UTILS ============
+function fmt(n) {
+  return Math.round(n).toLocaleString('vi-VN');
+}
+function formatDate(str) {
+  const [y, m, d] = str.split('-');
+  return `${d}/${m}/${y}`;
+}
+</script>
+</body>
+</html>
