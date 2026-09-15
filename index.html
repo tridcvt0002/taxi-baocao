@@ -249,7 +249,8 @@
           <option value="grab">Grab</option>
           <option value="gsm">GreenSM</option>
         </select>
-        <input type="month" id="fMonth" onchange="renderTable()">
+        <input type="date" id="fDateFrom" onchange="renderTable()" placeholder="Từ ngày" title="Từ ngày">
+        <input type="date" id="fDateTo" onchange="renderTable()" placeholder="Đến ngày" title="Đến ngày">
         <button class="btn btn-primary" onclick="exportCSV()" style="padding:8px 16px;font-size:13px">📥 Xuất Excel (CSV)</button>
       </div>
       <div id="tableWrap"></div>
@@ -611,7 +612,10 @@ function initApp() {
 
   document.getElementById('todayStr').textContent = formatDate(todayStr);
   document.getElementById('inDate').value = todayStr;
-  document.getElementById('fMonth').value = todayStr.substring(0, 7);
+  // Set default date range: first day of current month to today
+  const firstOfMonth = todayStr.substring(0, 7) + '-01';
+  document.getElementById('fDateFrom').value = firstOfMonth;
+  document.getElementById('fDateTo').value = todayStr;
   document.getElementById('schDate').value = todayStr;
 
   initScheduleBadge();
@@ -732,8 +736,19 @@ function saveEdit() {
 // ============ STATS ============
 function renderStats() {
   const records = getData();
-  const month = document.getElementById('fMonth')?.value || new Date().toISOString().substring(0, 7);
-  const monthly = records.filter(r => r.date.startsWith(month));
+  const dateFrom = document.getElementById('fDateFrom')?.value || '';
+  const dateTo   = document.getElementById('fDateTo')?.value || '';
+  const monthly  = records.filter(r => {
+    if (dateFrom && r.date < dateFrom) return false;
+    if (dateTo   && r.date > dateTo)   return false;
+    return true;
+  });
+  // Label for stats header: show range or month
+  const rangeLabel = dateFrom && dateTo
+    ? `${formatDate(dateFrom)} – ${formatDate(dateTo)}`
+    : dateFrom ? `từ ${formatDate(dateFrom)}`
+    : dateTo   ? `đến ${formatDate(dateTo)}`
+    : 'tất cả';
 
   const totalRev   = monthly.reduce((s, r) => s + r.revenue, 0);
   const totalComm  = monthly.reduce((s, r) => s + r.commission, 0);
@@ -745,14 +760,14 @@ function renderStats() {
 
   document.getElementById('statsGrid').innerHTML = `
     <div class="stat-box">
-      <div class="label">Tổng doanh thu (tháng ${month.split('-')[1]}/${month.split('-')[0]})</div>
+      <div class="label">Tổng doanh thu (${rangeLabel})</div>
       <div class="value">${fmt(totalRev)}đ</div>
       <div class="sub">${monthly.length} chuyến</div>
     </div>
     <div class="stat-box">
       <div class="label">Hoa hồng phải trả</div>
       <div class="value" style="color:#ea4335">${fmt(totalComm)}đ</div>
-      <div class="sub">${getApps().map(a => `${a.name} ${a.commission}%`).join(' / ')}</div>
+      <div class="sub">Trí: ${fmt(monthly.filter(r=>r.driver==='tri').reduce((s,r)=>s+r.commission,0))}đ / Phước: ${fmt(monthly.filter(r=>r.driver==='phuoc').reduce((s,r)=>s+r.commission,0))}đ</div>
     </div>
     <div class="stat-box">
       <div class="label">Thực nhận</div>
@@ -782,12 +797,14 @@ function renderTable() {
   renderStats();
   const fDriver = document.getElementById('fDriver').value;
   const fApp    = document.getElementById('fApp').value;
-  const fMonth  = document.getElementById('fMonth').value;
+  const fDateFrom = document.getElementById('fDateFrom').value;
+  const fDateTo   = document.getElementById('fDateTo').value;
 
   let records = getData();
   if (fDriver) records = records.filter(r => r.driver === fDriver);
   if (fApp)    records = records.filter(r => r.app === fApp);
-  if (fMonth)  records = records.filter(r => r.date.startsWith(fMonth));
+  if (fDateFrom) records = records.filter(r => r.date >= fDateFrom);
+  if (fDateTo)   records = records.filter(r => r.date <= fDateTo);
 
   // Driver only sees their own records
   if (currentUser.role === 'driver') {
@@ -869,12 +886,14 @@ function renderTable() {
 function exportCSV() {
   const fDriver = document.getElementById('fDriver').value;
   const fApp    = document.getElementById('fApp').value;
-  const fMonth  = document.getElementById('fMonth').value;
+  const fDateFrom = document.getElementById('fDateFrom').value;
+  const fDateTo   = document.getElementById('fDateTo').value;
 
   let records = getData();
   if (fDriver) records = records.filter(r => r.driver === fDriver);
   if (fApp)    records = records.filter(r => r.app === fApp);
-  if (fMonth)  records = records.filter(r => r.date.startsWith(fMonth));
+  if (fDateFrom) records = records.filter(r => r.date >= fDateFrom);
+  if (fDateTo)   records = records.filter(r => r.date <= fDateTo);
   if (currentUser.role === 'driver') records = records.filter(r => r.driver === currentUser.driver);
   records.sort((a, b) => a.date.localeCompare(b.date));
 
@@ -902,14 +921,33 @@ function exportCSV() {
   const sumNet  = records.reduce((s,r) => s+r.net, 0);
   const sumOwn  = records.reduce((s,r) => s+(r.ownerShare||r.net*0.4), 0);
   const sumDrv  = records.reduce((s,r) => s+(r.driverShare||r.net*0.6), 0);
-  csv += `TỔNG CỘNG,,,${Math.round(sumRev)},${Math.round(sumComm)},${Math.round(sumNet)},${Math.round(sumOwn)},${Math.round(sumDrv)}\n`;
+  csv += `TỔNG CỘNG,,,,${Math.round(sumRev)},${Math.round(sumComm)},${Math.round(sumNet)},${Math.round(sumOwn)},${Math.round(sumDrv)}\n`;
 
-  const filename = `doanh_thu${fMonth ? '_' + fMonth : ''}.csv`;
+  const filename = `doanh_thu${fDateFrom ? '_' + fDateFrom : ''}${fDateTo ? '_den_' + fDateTo : ''}.csv`;
+  // Mobile-compatible download: use data URI with base64
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
+  if (navigator.userAgent.match(/iPhone|iPad|iPod|Android/i)) {
+    // Mobile: open in new tab (user can share/save)
+    const reader = new FileReader();
+    reader.onload = function() {
+      const dataUri = reader.result;
+      const a = document.createElement('a');
+      a.href = dataUri;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+    reader.readAsDataURL(blob);
+  } else {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 }
 
 // ============ UTILS ============
