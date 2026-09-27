@@ -682,7 +682,7 @@ function addRecord() {
   }
 
   const appCfg = getAppById(app);
-  const commission = payment === 'thevi' ? 0 : rev * (appCfg.commission / 100);
+  const commission = (payment === 'thevi' && app !== 'gsm') ? 0 : rev * (appCfg.commission / 100);
   const net = rev - commission;
   const ownerShare = net * 0.4;
   const driverShare = net * 0.6;
@@ -725,7 +725,7 @@ function saveEdit() {
   const newRev = parseFormattedNumber(document.getElementById('editRevenue').value);
   if (newRev <= 0) { alert('Doanh thu phải > 0'); return; }
   const appCfg = getAppById(r.app);
-  const commission = r.payment === 'thevi' ? 0 : newRev * (appCfg.commission / 100);
+  const commission = (r.payment === 'thevi' && r.app !== 'gsm') ? 0 : newRev * (appCfg.commission / 100);
   const net = newRev - commission;
   records[idx] = { ...r, revenue: newRev, commission, net, ownerShare: net * 0.4, driverShare: net * 0.6 };
   saveData(records);
