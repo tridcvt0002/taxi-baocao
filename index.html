@@ -841,7 +841,7 @@ function renderTable() {
     sumRev += r.revenue; sumComm += r.commission; sumNet += r.net;
     sumOwner += owner; sumDriver += drv;
 
-    const commDisplay = r.payment === 'thevi' ? '<span style="color:#aaa">—</span>' : `<span style="color:#ea4335">${fmt(r.commission)}đ</span>`;
+    const commDisplay = (r.payment === 'thevi' && r.app !== 'gsm') ? '<span style="color:#aaa">—</span>' : `<span style="color:#ea4335">${fmt(r.commission)}đ</span>`;
 
     let actionCell = '';
     if (currentUser.role === 'admin') {
@@ -902,7 +902,7 @@ function exportCSV() {
   for (const r of records) {
     const owner = r.ownerShare || r.net * 0.4;
     const drv   = r.driverShare || r.net * 0.6;
-    const comm  = r.payment === 'thevi' ? 0 : Math.round(r.commission);
+    const comm  = (r.payment === 'thevi' && r.app !== 'gsm') ? 0 : Math.round(r.commission);
     csv += [
       formatDate(r.date),
       r.driver === 'tri' ? 'Trí' : 'Phước',
